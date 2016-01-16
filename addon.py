@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-# Module: default
 # Author: Jakub Zalas
-# Created on: 09.01.2015
 # License: MIT https://opensource.org/licenses/MIT
 
 import sys,os
@@ -11,12 +8,15 @@ from tvseriesonlinepl import list
 import urllib
 import xbmcgui
 import xbmcplugin
+import urlresolver
 
 _url = sys.argv[0]
 _handle = int(sys.argv[1])
 
+
 def build_url(query):
     return _url + '?' + urllib.urlencode(query)
+
 
 def list_shows():
     for show in list.shows().all():
@@ -27,23 +27,31 @@ def list_shows():
 
 
 def list_episodes(show_url):
-    for episode in list.episodes(show_url).all():
+    episodes = list.episodes(show_url)
+    for episode in episodes.all():
         url = build_url({'action': 'list_players', 'episode_name': episode.name, 'episode_url': episode.url})
-        li = xbmcgui.ListItem(episode.name, iconImage='DefaultFolder.png')
+        li = xbmcgui.ListItem(episode.name, iconImage=episodes.image)
         xbmcplugin.addDirectoryItem(handle=_handle, url=url, listitem=li, isFolder=True)
     xbmcplugin.endOfDirectory(_handle)
 
 
 def list_players(episode_url):
-    for player_site in list.player_sites(episode_url).all():
+    sites = list.player_sites(episode_url)
+    for player_site in sites.all():
         url = build_url({'action': 'play', 'player_site_name': player_site.name, 'player_site_url': player_site.url})
-        li = xbmcgui.ListItem(player_site.name, iconImage='DefaultFolder.png')
-        xbmcplugin.addDirectoryItem(handle=_handle, url=url, listitem=li, isFolder=True)
+        li = xbmcgui.ListItem(player_site.name, iconImage=sites.image)
+        li.setProperty('IsPlayable', 'true')
+        xbmcplugin.addDirectoryItem(handle=_handle, url=url, listitem=li, isFolder=False)
     xbmcplugin.endOfDirectory(_handle)
 
 
 def play(player_site_url):
-    xbmcgui.Dialog().ok("Play", player_site_url)
+    media_url = urlresolver.resolve(player_site_url)
+    if not media_url:
+        xbmcgui.Dialog().ok("Sorry", "Failed to resolve the url to a playable stream")
+        return
+    play_item = xbmcgui.ListItem(path=media_url)
+    xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
 
 
 def router(paramstring):

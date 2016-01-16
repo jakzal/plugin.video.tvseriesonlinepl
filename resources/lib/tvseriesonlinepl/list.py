@@ -2,6 +2,7 @@ import requests
 import re
 from BeautifulSoup import BeautifulSoup
 
+
 class Show:
     def __init__(self, name, url):
         self.name = name
@@ -53,6 +54,7 @@ class Episodes:
     def image(self):
         return self.image
 
+
 class PlayerSite:
     def __init__(self, url):
         self.url = url
@@ -66,15 +68,19 @@ class PlayerSite:
 
 
 class PlayerSites:
-    def __init__(self, name):
+    def __init__(self, name, image):
         self.name = name
         self.list = []
+        self.image = image
 
     def add(self, stream):
         self.list.append(stream)
 
     def all(self):
         return self.list
+
+    def image(self):
+        return self.image
 
 
 def shows():
@@ -105,12 +111,13 @@ def episodes(show_url):
 
 
 def player_sites(episode_url):
-    sites = PlayerSites("All")
-
     page = requests.get(episode_url)
     soup = BeautifulSoup(page.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
     main_link = soup.body.find('div', {"class": "seriale"}).findNextSibling('a').get('href')
     other_links = soup.body.find('div', {"class": "seriale"}).findAll('li')
+    image = soup.body.find('div', {"class": "catdesc"}).find('div', {"class": "catImage"}).find('img').get('src')
+
+    sites = PlayerSites("All", image)
 
     page = requests.get(main_link)
     link = re.search('.*window.location.href=\'(.*)\'.*', page.content).group(1)
@@ -121,13 +128,3 @@ def player_sites(episode_url):
             sites.add(PlayerSite(a.get('href').encode('utf-8')))
 
     return sites
-
-
-#for show in shows().all():
-#    print show.name+" "+show.url
-
-# for episode in episodes("http://www.tvseriesonline.pl/elementary/").all():
-#     print episode.name+" "+episode.url
-
-# for stream in player_sites("http://www.tvseriesonline.pl/elementary/1x01-pilot-23/").all():
-#    print stream.name+" "+stream.url
