@@ -120,7 +120,7 @@ def player_sites(episode_url):
     sites = PlayerSites("All", image)
 
     page = requests.get(main_link)
-    link = re.search('.*window.location.href=\'(.*)\'.*', page.content).group(1)
+    link = re.search('.*window.location.href\s*=\s*\'(.*)\'.*', page.content).group(1)
     sites.add(PlayerSite(link))
 
     for link in other_links:
