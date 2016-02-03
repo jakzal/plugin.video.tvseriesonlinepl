@@ -2,5 +2,8 @@ language: python
 python:
   - "2.7"
 
+install:
+  - pip install requests BeautifulSoup
+
 script: python -m unittest discover resources/lib/tvseriesonlinepl/
 
