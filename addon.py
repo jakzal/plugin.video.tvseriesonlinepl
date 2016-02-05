@@ -5,6 +5,7 @@ import sys,os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'resources', 'lib'))
 from urlparse import parse_qsl
 from tvseriesonlinepl import list
+from threading import Thread
 import urllib
 import xbmcgui
 import xbmcplugin
@@ -37,19 +38,30 @@ def list_episodes(show_url):
 
 def list_players(episode_url):
     sites = list.player_sites(episode_url)
+    threads = []
     for player_site in sites.all():
-        url = build_url({'action': 'play', 'player_site_name': player_site.name, 'player_site_url': player_site.url})
-        li = xbmcgui.ListItem(player_site.name, iconImage=sites.image)
-        li.setProperty('IsPlayable', 'true')
-        xbmcplugin.addDirectoryItem(handle=_handle, url=url, listitem=li, isFolder=False)
+        thread = Thread(target=resolve_media_url, args=(player_site, sites))
+        threads.append(thread)
+        thread.start()
+    for thread in threads:
+        thread.join()
     xbmcplugin.endOfDirectory(_handle)
 
 
-def play(player_site_url):
-    media_url = urlresolver.resolve(player_site_url)
+def resolve_media_url(player_site, sites):
+    media_url = urlresolver.resolve(player_site.url)
+    item_name = player_site.name
     if not media_url:
-        xbmcgui.Dialog().ok("Sorry", "Failed to resolve the url to a playable stream")
-        return
+        item_name = ':( ' + item_name
+    url = build_url({'action': 'play', 'player_site_name': player_site.name, 'player_site_url': media_url})
+    li = xbmcgui.ListItem(item_name, iconImage=sites.image)
+    if media_url:
+        li.setInfo(type='Video', infoLabels={"Title": item_name})
+        li.setProperty('IsPlayable', 'true')
+    xbmcplugin.addDirectoryItem(handle=_handle, url=url, listitem=li, isFolder=False)
+
+
+def play(media_url):
     play_item = xbmcgui.ListItem(path=media_url)
     xbmcplugin.setResolvedUrl(_handle, True, listitem=play_item)
 
