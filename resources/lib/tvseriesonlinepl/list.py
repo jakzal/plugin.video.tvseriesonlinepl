@@ -56,9 +56,9 @@ class Episodes:
 
 
 class PlayerSite:
-    def __init__(self, url):
+    def __init__(self, url, name):
         self.url = url
-        self.name = re.sub(r".*?://([^/]*)/.*", r"\1", url)
+        self.name = name
 
     def url(self):
         return self.url
@@ -98,9 +98,9 @@ def shows():
 def episodes(show_url):
     page = requests.get(show_url)
     soup = BeautifulSoup(page.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
-    headers = soup.body.find('div', {"id": "contentwrap2"}).findAll('h3')
-    title = soup.body.find('div', {"class": "catdesc"}).find('h2').text
-    image = soup.body.find('div', {"class": "catdesc"}).find('div', {"class": "catImage"}).find('img').get('src')
+    headers = soup.body.find('article').findAll('h4')
+    title = soup.body.find('article').find('h2').text
+    image = soup.body.find('article').find('img').get('src')
 
     episode_list = Episodes(title.encode('utf-8'), image.encode('utf-8'))
     for header in headers:
@@ -113,18 +113,15 @@ def episodes(show_url):
 def player_sites(episode_url):
     page = requests.get(episode_url)
     soup = BeautifulSoup(page.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
-    main_link = soup.body.find('div', {"class": "seriale"}).findNextSibling('a').get('href')
-    other_links = soup.body.find('div', {"class": "seriale"}).findAll('li')
-    image = soup.body.find('div', {"class": "catdesc"}).find('div', {"class": "catImage"}).find('img').get('src')
+    links = soup.body.find('div', {"class": re.compile(r".*\bvideo-links\b.*")}).findAll('a')
+    image = soup.body.find('div', {"class": "catImage"}).find('img').get('src')
 
     sites = PlayerSites("All", image)
 
-    page = requests.get(main_link)
-    link = re.search('.*window.location.href\s*=\s*\'(.*)\'.*', page.content).group(1)
-    sites.add(PlayerSite(link))
-
-    for link in other_links:
-        for a in link.findAll('a'):
-            sites.add(PlayerSite(a.get('href').encode('utf-8')))
+    for link in links:
+        url = link.get('href').encode('utf-8')
+        group = link.findPrevious('h5').text.strip(':').encode('utf-8')
+        name = re.sub(r".*?://([^/]*)/.*", r"\1", url)+" ("+group+")"
+        sites.add(PlayerSite(url, name))
 
     return sites
